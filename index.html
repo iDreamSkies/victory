@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Викторина</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0e0f13;
+    --text:#f2f3f5;
+    --muted:#9aa0a6;
+
+    --dark:#1A1A1D;
+    --gray:#4E4E50;
+    --red1:#6F2232;
+    --red2:#950740;
+    --red3:#C3073F;
+    --yellow:#f1c40f;
+    --green:#38d98a;
+    --red:#ff626d;
+
+    --card-blur:12px;
+    --radius:18px;
+  }
+
+  *{box-sizing:border-box}
+  html,body{
+    height:100%;
+    margin:0;
+    overflow:hidden;
+    background:var(--bg);
+    color:var(--text);
+    font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  }
+
+  .stage{
+    position:fixed; inset:0; overflow:hidden;
+    display:grid; place-items:center; padding:24px;
+    isolation:isolate;
+  }
+  .stage::before{
+    content:""; position:absolute; inset:-20%;
+    background:
+      radial-gradient(60% 80% at 20% 30%, rgba(195,7,63,.22) 0%, transparent 60%),
+      radial-gradient(50% 70% at 80% 75%, rgba(149,7,64,.18) 0%, transparent 60%),
+      radial-gradient(40% 60% at 70% 20%, rgba(111,34,50,.16) 0%, transparent 65%);
+    filter:blur(40px) saturate(110%);
+    animation:drift 26s ease-in-out infinite;
+    transform:translateZ(0);
+    z-index:0; pointer-events:none;
+  }
+  .stage::after{
+    content:""; position:absolute; inset:-10%;
+    background:
+      conic-gradient(from 180deg at 70% 40%, rgba(195,7,63,.18), transparent 25%),
+      conic-gradient(from -40deg at 30% 70%, rgba(149,7,64,.15), transparent 20%);
+    filter:blur(60px); mix-blend-mode:screen;
+    animation:sweep 22s linear infinite; opacity:.9;
+    transform:translateZ(0);
+    z-index:0; pointer-events:none;
+  }
+  @keyframes drift{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-3%,-2%) scale(1.02)}}
+  @keyframes sweep{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+
+  .card{
+    width:min(900px,100%); padding:28px;
+    border-radius:var(--radius);
+    background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.025));
+    border:1px solid rgba(255,255,255,.08);
+    backdrop-filter:blur(var(--card-blur)); -webkit-backdrop-filter:blur(var(--card-blur));
+    box-shadow:0 20px 60px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.02) inset;
+    position:relative; z-index:1;
+    transition:opacity .4s ease, transform .4s ease;
+  }
+  .card::before{
+    content:""; position:absolute; inset:-1px; border-radius:calc(var(--radius) + 1px); padding:1px;
+    background:linear-gradient(135deg, rgba(195,7,63,.70), rgba(255,255,255,.08), rgba(111,34,50,.35));
+    -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none;
+  }
+
+  .title{margin:0 0 12px; font-weight:800; font-size:22px; letter-spacing:.2px}
+  .divider{height:2px; width:100%; background:linear-gradient(90deg, rgba(195,7,63,.35), rgba(255,255,255,.06), rgba(149,7,64,.25)); border-radius:999px; opacity:.8; margin:8px 0 16px}
+
+  /* glitch эффект на заголовке */
+  .glitch{
+    position:relative;
+    animation:glow .7s ease;
+  }
+  @keyframes glow{
+    0%{ text-shadow:0 0 0 rgba(195,7,63,0)}
+    30%{ text-shadow:0 0 12px rgba(195,7,63,.6)}
+    100%{ text-shadow:0 0 0 rgba(195,7,63,0)}
+  }
+  .glitch::before, .glitch::after{
+    content:attr(data-text);
+    position:absolute; left:0; top:0; pointer-events:none; opacity:.8;
+    clip-path:inset(0 0 0 0);
+  }
+  .glitch::before{ transform:translate(-1px,0); color:#ff4d6d; mix-blend-mode:screen; animation:glitchShift .7s ease }
+  .glitch::after{ transform:translate(1px,0); color:#6df2ff; mix-blend-mode:screen; animation:glitchShift2 .7s ease }
+  @keyframes glitchShift{0%{transform:translate(-1px,0)}40%{transform:translate(-3px,-1px)}80%{transform:translate(-1px,1px)}100%{transform:translate(0,0)}}
+  @keyframes glitchShift2{0%{transform:translate(1px,0)}40%{transform:translate(2px,1px)}80%{transform:translate(1px,-1px)}100%{transform:translate(0,0)}}
+
+  .question{font-size:18px; line-height:1.6; margin:0 0 16px; color:#e7e8ea; display:block}
+  .row{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+
+  input[type="text"]{
+    flex:1; height:50px; border-radius:14px;
+    border:1px solid rgba(255,255,255,.08);
+    background:#0b0c10; color:var(--text);
+    padding:0 16px; font-size:16px; outline:none;
+    transition:border-color .2s ease, box-shadow .2s ease, background .2s ease;
+  }
+  input::placeholder{color:#7e828a}
+  input:focus{border-color:var(--red3); box-shadow:0 0 0 4px rgba(195,7,63,.18); background:#090a0d}
+
+  .actions{display:flex; gap:10px; flex-wrap:wrap}
+  button{
+    height:50px; padding:0 18px; border-radius:14px;
+    border:1px solid transparent; cursor:pointer;
+    font-weight:800; letter-spacing:.3px;
+    transition:filter .15s ease, opacity .2s ease, background-color .2s ease;
+  }
+  button:disabled{cursor:not-allowed; opacity:.5}
+  .btn-primary{color:#0a0a0c; background:linear-gradient(180deg, var(--red3), var(--red2)); box-shadow:0 10px 24px rgba(195,7,63,.30)}
+  .btn-primary:hover:not(:disabled){filter:brightness(1.07)}
+  .btn-ghost{color:var(--text); background:transparent; border:1px solid #2b2d33}
+  .btn-ghost:hover:not(:disabled){background-color:rgba(255,255,255,.05)}
+
+  .result{min-height:22px; margin-top:12px; font-weight:600; line-height:1.5}
+  .ok{color:var(--green)}
+  .err{color:var(--red)}
+  .hint,.ans-reveal{color:var(--yellow)}
+
+  .shake{animation:shake .25s linear}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+  .fade-out{opacity:0; transform:translateY(-20px)}
+  .fade-in{opacity:1; transform:translateY(0)}
+
+  .done{text-align:center; padding:36px 8px}
+  .done h2{margin:0 0 8px; font-size:28px}
+  .done p{margin:0; color:var(--muted)}
+  .done .actions{justify-content:center; margin-top:20px}
+
+  @media (max-width:560px){
+    .title{font-size:18px}
+    .question{font-size:16px}
+    .card{padding:22px}
+    .row{flex-direction:column; align-items:stretch}
+    .actions{flex-direction:column; align-items:stretch}
+    .row input[type="text"]{width:100%; flex:1 1 auto}
+  }
+  @media (min-width:561px){ .done .actions button{flex:1} }
+</style>
+</head>
+<body>
+  <main class="stage">
+    <section class="card" id="card" role="region" aria-live="polite"></section>
+  </main>
+
+<script>
+const card = document.getElementById('card');
+
+const gameTemplate = `
+  <h1 class="title" id="title" data-text="Викторина">Викторина</h1>
+  <div class="divider" aria-hidden="true"></div>
+  <label class="question" id="question" for="answer">Загрузка вопросов…</label>
+  <div class="row">
+    <input type="text" id="answer" placeholder="Ваш ответ" autocomplete="off" />
+    <div class="actions">
+      <button class="btn-primary" id="submit">Ответить</button>
+      <button class="btn-ghost" id="hint">Подсказка</button>
+      <button class="btn-ghost" id="skip">Сменить вопрос</button>
+    </div>
+  </div>
+  <div class="result" id="result"></div>
+`;
+
+let questions = [];
+let order = [];
+let currentIndex = 0;
+let wrongAttempts = 0;
+let dom = {};
+
+async function loadQuestions(){
+  try{
+    const res = await fetch('questions.json', {cache:'no-store'});
+    if(!res.ok) throw new Error(res.statusText);
+    questions = await res.json();
+
+    const saved = JSON.parse(localStorage.getItem('quizProgress'));
+    if(saved && saved.order && saved.order.length>0 && saved.i < saved.order.length){
+      order = saved.order; currentIndex = saved.i;
+      showResumePrompt();
+    }else{
+      startNewGame();
+    }
+  }catch(e){
+    card.innerHTML = `<div class="done"><h2>Ошибка</h2><p>Не удалось загрузить <b>questions.json</b>.</p></div>`;
+  }
+}
+
+function startNewGame(){
+  order = [...Array(questions.length).keys()].sort(()=>Math.random()-0.5);
+  currentIndex = 0; saveProgress(); initGameUI();
+}
+function showResumePrompt(){
+  card.innerHTML = `
+    <div class="done">
+      <h2>Найдена прошлая игра</h2>
+      <p>Продолжить?</p>
+      <div class="actions">
+        <button class="btn-primary" id="resume-btn">Продолжить</button>
+        <button class="btn-ghost" id="new-game-btn">Начать заново</button>
+      </div>
+    </div>`;
+  document.getElementById('resume-btn').onclick = initGameUI;
+  document.getElementById('new-game-btn').onclick = startNewGame;
+}
+
+function initGameUI(){
+  card.innerHTML = gameTemplate;
+  dom.titleEl   = document.getElementById('title');
+  dom.questionEl= document.getElementById('question');
+  dom.answerEl  = document.getElementById('answer');
+  dom.resultEl  = document.getElementById('result');
+  dom.submitBtn = document.getElementById('submit');
+  dom.skipBtn   = document.getElementById('skip');
+  dom.hintBtn   = document.getElementById('hint');
+  bindEvents();
+  renderQuestion();
+}
+
+function renderQuestion(){
+  if(currentIndex >= order.length){ finishGame(); return; }
+
+  card.classList.remove('fade-in'); card.classList.add('fade-out');
+  setTimeout(()=>{
+    const q = questions[order[currentIndex]];
+    dom.questionEl.textContent = q.q;
+    dom.answerEl.value = '';
+    dom.resultEl.textContent = '';
+    dom.resultEl.className = 'result';
+    wrongAttempts = 0;
+    dom.answerEl.focus();
+    enableButtons();
+    card.classList.remove('fade-out'); card.classList.add('fade-in');
+  }, 350);
+}
+
+function checkAnswer(){
+  const user = normalize(dom.answerEl.value);
+  if(!user){ shake(dom.answerEl); return; }
+  const correct = normalize(questions[order[currentIndex]].a);
+
+  if(user === correct){
+    dom.resultEl.textContent = 'Верно!';
+    dom.resultEl.className = 'result ok';
+    glitchTitle();              // эффект на заголовке
+    disableButtons();
+    currentIndex++; saveProgress();
+    setTimeout(renderQuestion, 1000);
+  }else{
+    wrongAttempts++;
+    dom.resultEl.textContent = 'Неверно, попробуйте ещё раз.';
+    dom.resultEl.className = 'result err';
+    shake(dom.answerEl);
+    if(wrongAttempts >= 2){
+      const correctRaw = questions[order[currentIndex]].a;
+      dom.resultEl.innerHTML = `Неверно. Правильный ответ: <span class="ans-reveal">${correctRaw}</span>`;
+      disableButtons();
+      setTimeout(()=> skipQuestion(true), 2000);
+    }
+  }
+}
+
+/* исправленная логика Skip: переносим текущий вопрос в КОНЕЦ и сразу показываем следующий */
+function skipQuestion(auto=false){
+  if(currentIndex >= order.length) return;
+  disableButtons();
+
+  if(!auto){
+    const correctRaw = questions[order[currentIndex]].a;
+    dom.resultEl.innerHTML = `Правильный ответ: <span class="ans-reveal">${correctRaw}</span>`;
+    setTimeout(doSkip, 1000);
+  } else {
+    doSkip();
+  }
+
+  function doSkip(){
+    const id = order[currentIndex];
+    order.splice(currentIndex,1);
+    order.push(id);        // конец очереди
+    saveProgress();
+    renderQuestion();
+  }
+}
+
+/* маска-подсказка: первая буква видна, остальные буквы — точки; пробелы/дефисы сохраняем */
+function showHint(){
+  if(currentIndex >= order.length) return;
+  const a = questions[order[currentIndex]].a.trim();
+  const mask = maskAnswer(a);
+  dom.resultEl.textContent = `Подсказка: ${mask}`;
+  dom.resultEl.className = 'result hint';
+  dom.hintBtn.disabled = true;
+}
+
+/* ===== helpers ===== */
+function maskAnswer(a){
+  if(!a) return '';
+  const first = a[0].toUpperCase().replace('Ё','Е');
+  let out = first;
+  for(let i=1;i<a.length;i++){
+    const ch = a[i];
+    if (ch === ' ' || ch === '-' ) out += ch;
+    else out += '•';
+  }
+  return out;
+}
+function lettersOnly(str){ return str.replace(/[\s-]/g,'').replace(/ё/gi,'е'); }
+
+function finishGame(){
+  card.classList.remove('fade-in'); card.classList.add('fade-out');
+  setTimeout(()=>{
+    const total = questions.length;
+    card.innerHTML = `
+      <div class="done">
+        <h2>Поздравляем! 🎉</h2>
+        <p>Вы ответили на все ${total} вопрос${plural(total,'','а','ов')}.</p>
+        <div class="actions">
+          <button class="btn-primary" id="again">Сыграть ещё раз</button>
+        </div>
+      </div>`;
+    document.getElementById('again').onclick = ()=>{
+      localStorage.removeItem('quizProgress'); startNewGame();
+    };
+    card.classList.remove('fade-out'); card.classList.add('fade-in');
+  }, 350);
+}
+
+function saveProgress(){ localStorage.setItem('quizProgress', JSON.stringify({order, i:currentIndex})); }
+function enableButtons(){ dom.submitBtn.disabled = dom.hintBtn.disabled = dom.skipBtn.disabled = false; }
+function disableButtons(){ dom.submitBtn.disabled = dom.hintBtn.disabled = dom.skipBtn.disabled = true; }
+
+function normalize(s){
+  return s.toLowerCase().replace(/ё/g,'е').replace(/[^\p{L}\p{N}\s-]/gu,'').trim();
+}
+function shake(el){ el.classList.add('shake'); setTimeout(()=>el.classList.remove('shake'), 250); }
+function plural(n,one,few,many){ n=Math.abs(n)%100; const n1=n%10; if(n>10&&n<20)return many; if(n1>1&&n1<5)return few; if(n1==1)return one; return many; }
+
+function glitchTitle(){
+  dom.titleEl.classList.remove('glitch'); // перезапуск анимации
+  void dom.titleEl.offsetWidth;
+  dom.titleEl.classList.add('glitch');
+}
+
+/* events */
+function bindEvents(){
+  dom.submitBtn.onclick = checkAnswer;
+  dom.skipBtn.onclick = ()=>skipQuestion(false);
+  dom.hintBtn.onclick = showHint;
+  dom.answerEl.onkeydown = e=>{ if(e.key==='Enter') checkAnswer(); };
+}
+
+loadQuestions();
+</script>
+</body>
+</html>
